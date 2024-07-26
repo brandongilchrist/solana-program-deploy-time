@@ -1,7 +1,3 @@
-Here is the updated README for your project, incorporating the latest changes:
-
----
-
 # Solana Program Deployment Timestamp Tool
 
 ## Overview
@@ -101,6 +97,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Contact
 
 For questions or issues, please open an issue on the GitHub repository or contact brandongilchrist via GitHub.
-
----
-

@@ -1,35 +1,34 @@
-import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
-import pLimit from 'p-limit';
-
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const web3_js_1 = require("@solana/web3.js");
+const yargs_1 = __importDefault(require("yargs"));
+const helpers_1 = require("yargs/helpers");
+const p_limit_1 = __importDefault(require("p-limit"));
 // Create a limit function with a concurrency of 1 to control the number of parallel connections
-const limit = pLimit(1);
-
+const limit = (0, p_limit_1.default)(1);
 // Function to delay execution
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-async function getFirstTransactionTimestamp(programId: string, verbose: boolean = false) {
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
+async function getFirstTransactionTimestamp(programId, verbose = false) {
     try {
         // Connect to the Solana network (mainnet-beta)
-        const connection = new Connection(clusterApiUrl('mainnet-beta'), 'confirmed');
+        const connection = new web3_js_1.Connection((0, web3_js_1.clusterApiUrl)('mainnet-beta'), 'confirmed');
         const requestInterval = 6000; // 6 seconds per request to avoid rate limiting
-
         if (verbose) {
             console.log(`Connected to Solana mainnet-beta with endpoint: ${connection.rpcEndpoint}`);
             console.log(`Request interval set to: ${requestInterval}ms`);
         }
-
         // Convert the program ID to a PublicKey object
-        const publicKey = new PublicKey(programId);
-        if (verbose) console.log(`Converted program ID to PublicKey: ${publicKey.toString()}`);
-
-        let before: string | undefined = undefined;
-        let earliestSignature: string | undefined = undefined;
+        const publicKey = new web3_js_1.PublicKey(programId);
+        if (verbose)
+            console.log(`Converted program ID to PublicKey: ${publicKey.toString()}`);
+        let before = undefined;
+        let earliestSignature = undefined;
         let totalSignaturesFetched = 0;
         let retries = 0;
         const maxRetries = 5;
-
         // Paginate through all transaction signatures to find the earliest
         while (true) {
             try {
@@ -40,27 +39,23 @@ async function getFirstTransactionTimestamp(programId: string, verbose: boolean 
                     }
                     break; // All transactions have been fetched
                 }
-
                 // Update the before parameter to the signature of the last fetched transaction
                 before = signatures[signatures.length - 1].signature;
                 earliestSignature = signatures[signatures.length - 1].signature;
                 totalSignaturesFetched += signatures.length;
-
                 if (verbose) {
                     console.log(`Fetched ${signatures.length} signatures, total so far: ${totalSignaturesFetched}`);
                 }
-
                 // Reset retries on successful fetch
                 retries = 0;
-
                 // Stop if the batch contains fewer than 1000 transactions
                 if (signatures.length < 1000) {
                     break;
                 }
-
                 // Respect the rate limit by waiting before the next batch
                 await delay(requestInterval);
-            } catch (err) {
+            }
+            catch (err) {
                 if (err instanceof Error && err.message.includes('429')) {
                     // Too many requests, apply exponential backoff
                     if (retries < maxRetries) {
@@ -68,63 +63,59 @@ async function getFirstTransactionTimestamp(programId: string, verbose: boolean 
                         console.error(`Server responded with 429 Too Many Requests. Retrying after ${delayTime}ms delay...`);
                         await delay(delayTime);
                         retries += 1;
-                    } else {
+                    }
+                    else {
                         throw new Error('Exceeded maximum retries due to 429 Too Many Requests.');
                     }
-                } else {
+                }
+                else {
                     throw err; // Re-throw other errors
                 }
             }
         }
-
-        if (verbose) console.log(`Earliest transaction signature: ${earliestSignature}`);
-
+        if (verbose)
+            console.log(`Earliest transaction signature: ${earliestSignature}`);
         // Retrieve the details of the earliest transaction with rate limiting
-        const transactionDetails = await limit(() => connection.getTransaction(earliestSignature!, { maxSupportedTransactionVersion: 0 }));
+        const transactionDetails = await limit(() => connection.getTransaction(earliestSignature, { maxSupportedTransactionVersion: 0 }));
         if (!transactionDetails || transactionDetails.blockTime === null) {
             throw new Error('Unable to fetch transaction details or block time is unavailable.');
         }
-
-        if (verbose) console.log(`Fetched transaction details: ${JSON.stringify(transactionDetails)}`);
-
+        if (verbose)
+            console.log(`Fetched transaction details: ${JSON.stringify(transactionDetails)}`);
         const timestamp = new Date(transactionDetails.blockTime * 1000).toISOString();
-
         if (verbose) {
             console.log(`Program ID: ${programId}`);
             console.log(`First Deployment Timestamp: ${timestamp}`);
-        } else {
+        }
+        else {
             console.log(timestamp);
         }
-    } catch (err) {
+    }
+    catch (err) {
         if (verbose && err instanceof Error) {
             console.error(`Error: ${err.message}`);
             console.error(err.stack);
-        } else {
+        }
+        else {
             console.error('An unexpected error occurred.');
         }
     }
 }
-
 // Define the command-line interface using yargs
-yargs(hideBin(process.argv))
-    .command(
-        'get-timestamp <programId>',
-        'Get the first deployment timestamp of a Solana program',
-        (yargs) => {
-            yargs.positional('programId', {
-                describe: 'The public key of the program',
-                type: 'string',
-            });
-        },
-        (argv) => {
-            getFirstTransactionTimestamp(argv.programId as string, argv.verbose as boolean);
-        }
-    )
+(0, yargs_1.default)((0, helpers_1.hideBin)(process.argv))
+    .command('get-timestamp <programId>', 'Get the first deployment timestamp of a Solana program', (yargs) => {
+    yargs.positional('programId', {
+        describe: 'The public key of the program',
+        type: 'string',
+    });
+}, (argv) => {
+    getFirstTransactionTimestamp(argv.programId, argv.verbose);
+})
     .option('verbose', {
-        alias: 'v',
-        type: 'boolean',
-        description: 'Run with verbose logging',
-    })
+    alias: 'v',
+    type: 'boolean',
+    description: 'Run with verbose logging',
+})
     .demandCommand(1)
     .help()
     .argv;

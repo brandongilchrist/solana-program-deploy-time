@@ -1,3 +1,7 @@
+Here is the updated README for your project, incorporating the latest changes:
+
+---
+
 # Solana Program Deployment Timestamp Tool
 
 ## Overview
@@ -25,12 +29,18 @@ To install and run the tool, ensure that [Node.js](https://nodejs.org/) and [npm
    npm install
    ```
 
+3. **Build the Project:**
+   Compile the TypeScript code into JavaScript:
+   ```bash
+   npm run build
+   ```
+
 ## Usage
 
 Run the tool using the following command:
 
 ```bash
-npx ts-node src/index.ts get-timestamp <programId> [--verbose]
+node dist/index.js get-timestamp <programId> [--verbose]
 ```
 
 - `<programId>`: The public key of the Solana program for which you want to find the first deployment timestamp.
@@ -39,7 +49,7 @@ npx ts-node src/index.ts get-timestamp <programId> [--verbose]
 ### Example
 
 ```bash
-npx ts-node src/index.ts get-timestamp TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA --verbose
+node dist/index.js get-timestamp TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA --verbose
 ```
 
 This command fetches the first deployment timestamp for the specified Solana program and outputs the result. The `--verbose` flag provides additional information about the process.
@@ -63,14 +73,6 @@ This command fetches the first deployment timestamp for the specified Solana pro
    ```bash
    npm install
    ```
-
-### Running the Tool
-
-Use the following command during development:
-
-```bash
-npx ts-node src/index.ts get-timestamp <programId> [--verbose]
-```
 
 ### Building for Production
 
@@ -102,4 +104,3 @@ For questions or issues, please open an issue on the GitHub repository or contac
 
 ---
 
-This README provides a comprehensive guide for users and developers, including installation, usage, development setup, and contribution guidelines. Remember to replace any placeholder information with the actual details specific to your setup.

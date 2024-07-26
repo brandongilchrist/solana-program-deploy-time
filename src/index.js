@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getFirstTransactionTimestamp = getFirstTransactionTimestamp;
 const web3_js_1 = require("@solana/web3.js");
 const yargs_1 = __importDefault(require("yargs"));
 const helpers_1 = require("yargs/helpers");
@@ -11,11 +12,12 @@ const p_limit_1 = __importDefault(require("p-limit"));
 const limit = (0, p_limit_1.default)(1);
 // Function to delay execution
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
+// Function to get the first transaction timestamp of a Solana program
 async function getFirstTransactionTimestamp(programId, verbose = false) {
     try {
         // Connect to the Solana network (mainnet-beta)
         const connection = new web3_js_1.Connection((0, web3_js_1.clusterApiUrl)('mainnet-beta'), 'confirmed');
-        const requestInterval = 6000; // 6 seconds per request to avoid rate limiting
+        const requestInterval = 8000; // 8 seconds per request to avoid rate limiting
         if (verbose) {
             console.log(`Connected to Solana mainnet-beta with endpoint: ${connection.rpcEndpoint}`);
             console.log(`Request interval set to: ${requestInterval}ms`);
@@ -55,8 +57,8 @@ async function getFirstTransactionTimestamp(programId, verbose = false) {
                 // Respect the rate limit by waiting before the next batch
                 await delay(requestInterval);
             }
-            catch (err) {
-                if (err instanceof Error && err.message.includes('429')) {
+            catch (error) {
+                if (error instanceof Error && error.message.includes('429')) {
                     // Too many requests, apply exponential backoff
                     if (retries < maxRetries) {
                         const delayTime = Math.pow(2, retries) * requestInterval; // Exponential backoff
@@ -69,7 +71,7 @@ async function getFirstTransactionTimestamp(programId, verbose = false) {
                     }
                 }
                 else {
-                    throw err; // Re-throw other errors
+                    throw error; // Re-throw other errors
                 }
             }
         }
@@ -77,12 +79,16 @@ async function getFirstTransactionTimestamp(programId, verbose = false) {
             console.log(`Earliest transaction signature: ${earliestSignature}`);
         // Retrieve the details of the earliest transaction with rate limiting
         const transactionDetails = await limit(() => connection.getTransaction(earliestSignature, { maxSupportedTransactionVersion: 0 }));
-        if (!transactionDetails || transactionDetails.blockTime === null) {
-            throw new Error('Unable to fetch transaction details or block time is unavailable.');
+        if (!transactionDetails) {
+            throw new Error('Unable to fetch transaction details.');
         }
         if (verbose)
             console.log(`Fetched transaction details: ${JSON.stringify(transactionDetails)}`);
-        const timestamp = new Date(transactionDetails.blockTime * 1000).toISOString();
+        const blockTime = transactionDetails.blockTime;
+        if (blockTime === null || blockTime === undefined) {
+            throw new Error('Block time is unavailable.');
+        }
+        const timestamp = new Date(blockTime * 1000).toISOString();
         if (verbose) {
             console.log(`Program ID: ${programId}`);
             console.log(`First Deployment Timestamp: ${timestamp}`);
@@ -91,13 +97,10 @@ async function getFirstTransactionTimestamp(programId, verbose = false) {
             console.log(timestamp);
         }
     }
-    catch (err) {
-        if (verbose && err instanceof Error) {
-            console.error(`Error: ${err.message}`);
-            console.error(err.stack);
-        }
-        else {
-            console.error('An unexpected error occurred.');
+    catch (error) {
+        console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+        if (verbose && error instanceof Error && error.stack) {
+            console.error(error.stack);
         }
     }
 }

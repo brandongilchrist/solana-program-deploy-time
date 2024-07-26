@@ -9,11 +9,12 @@ const limit = pLimit(1);
 // Function to delay execution
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-async function getFirstTransactionTimestamp(programId: string, verbose: boolean = false) {
+// Function to get the first transaction timestamp of a Solana program
+export async function getFirstTransactionTimestamp(programId: string, verbose: boolean = false) {
     try {
         // Connect to the Solana network (mainnet-beta)
         const connection = new Connection(clusterApiUrl('mainnet-beta'), 'confirmed');
-        const requestInterval = 6000; // 6 seconds per request to avoid rate limiting
+        const requestInterval = 8000; // 8 seconds per request to avoid rate limiting
 
         if (verbose) {
             console.log(`Connected to Solana mainnet-beta with endpoint: ${connection.rpcEndpoint}`);
@@ -60,8 +61,8 @@ async function getFirstTransactionTimestamp(programId: string, verbose: boolean 
 
                 // Respect the rate limit by waiting before the next batch
                 await delay(requestInterval);
-            } catch (err) {
-                if (err instanceof Error && err.message.includes('429')) {
+            } catch (error) {
+                if (error instanceof Error && error.message.includes('429')) {
                     // Too many requests, apply exponential backoff
                     if (retries < maxRetries) {
                         const delayTime = Math.pow(2, retries) * requestInterval; // Exponential backoff
@@ -72,7 +73,7 @@ async function getFirstTransactionTimestamp(programId: string, verbose: boolean 
                         throw new Error('Exceeded maximum retries due to 429 Too Many Requests.');
                     }
                 } else {
-                    throw err; // Re-throw other errors
+                    throw error; // Re-throw other errors
                 }
             }
         }
@@ -81,13 +82,18 @@ async function getFirstTransactionTimestamp(programId: string, verbose: boolean 
 
         // Retrieve the details of the earliest transaction with rate limiting
         const transactionDetails = await limit(() => connection.getTransaction(earliestSignature!, { maxSupportedTransactionVersion: 0 }));
-        if (!transactionDetails || transactionDetails.blockTime === null) {
-            throw new Error('Unable to fetch transaction details or block time is unavailable.');
+        if (!transactionDetails) {
+            throw new Error('Unable to fetch transaction details.');
         }
 
         if (verbose) console.log(`Fetched transaction details: ${JSON.stringify(transactionDetails)}`);
 
-        const timestamp = new Date(transactionDetails.blockTime * 1000).toISOString();
+        const blockTime = transactionDetails.blockTime;
+        if (blockTime === null || blockTime === undefined) {
+            throw new Error('Block time is unavailable.');
+        }
+
+        const timestamp = new Date(blockTime * 1000).toISOString();
 
         if (verbose) {
             console.log(`Program ID: ${programId}`);
@@ -95,12 +101,10 @@ async function getFirstTransactionTimestamp(programId: string, verbose: boolean 
         } else {
             console.log(timestamp);
         }
-    } catch (err) {
-        if (verbose && err instanceof Error) {
-            console.error(`Error: ${err.message}`);
-            console.error(err.stack);
-        } else {
-            console.error('An unexpected error occurred.');
+    } catch (error) {
+        console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+        if (verbose && error instanceof Error && error.stack) {
+            console.error(error.stack);
         }
     }
 }

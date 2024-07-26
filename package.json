@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha tests/**/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -16,8 +16,14 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@types/chai": "^4.3.16",
+    "@types/mocha": "^10.0.7",
     "@types/node": "^20.14.12",
+    "@types/sinon": "^17.0.3",
     "@types/yargs": "^17.0.32",
+    "chai": "^5.1.1",
+    "mocha": "^10.7.0",
+    "sinon": "^18.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   }

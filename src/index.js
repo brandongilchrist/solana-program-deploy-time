@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.delay = void 0;
 exports.getFirstTransactionTimestamp = getFirstTransactionTimestamp;
 const web3_js_1 = require("@solana/web3.js");
 const yargs_1 = __importDefault(require("yargs"));
@@ -12,7 +13,7 @@ const p_limit_1 = __importDefault(require("p-limit"));
 const limit = (0, p_limit_1.default)(1);
 // Function to delay execution
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
-// Function to get the first transaction timestamp of a Solana program
+exports.delay = delay;
 async function getFirstTransactionTimestamp(programId, verbose = false) {
     try {
         // Connect to the Solana network (mainnet-beta)
@@ -55,7 +56,7 @@ async function getFirstTransactionTimestamp(programId, verbose = false) {
                     break;
                 }
                 // Respect the rate limit by waiting before the next batch
-                await delay(requestInterval);
+                await (0, exports.delay)(requestInterval);
             }
             catch (error) {
                 if (error instanceof Error && error.message.includes('429')) {
@@ -63,7 +64,7 @@ async function getFirstTransactionTimestamp(programId, verbose = false) {
                     if (retries < maxRetries) {
                         const delayTime = Math.pow(2, retries) * requestInterval; // Exponential backoff
                         console.error(`Server responded with 429 Too Many Requests. Retrying after ${delayTime}ms delay...`);
-                        await delay(delayTime);
+                        await (0, exports.delay)(delayTime);
                         retries += 1;
                     }
                     else {
@@ -78,23 +79,29 @@ async function getFirstTransactionTimestamp(programId, verbose = false) {
         if (verbose)
             console.log(`Earliest transaction signature: ${earliestSignature}`);
         // Retrieve the details of the earliest transaction with rate limiting
-        const transactionDetails = await limit(() => connection.getTransaction(earliestSignature, { maxSupportedTransactionVersion: 0 }));
-        if (!transactionDetails) {
-            throw new Error('Unable to fetch transaction details.');
-        }
-        if (verbose)
-            console.log(`Fetched transaction details: ${JSON.stringify(transactionDetails)}`);
-        const blockTime = transactionDetails.blockTime;
-        if (blockTime === null || blockTime === undefined) {
-            throw new Error('Block time is unavailable.');
-        }
-        const timestamp = new Date(blockTime * 1000).toISOString();
-        if (verbose) {
-            console.log(`Program ID: ${programId}`);
-            console.log(`First Deployment Timestamp: ${timestamp}`);
-        }
-        else {
-            console.log(timestamp);
+        while (earliestSignature) {
+            const transactionDetails = await limit(() => connection.getTransaction(earliestSignature, { maxSupportedTransactionVersion: 0 }));
+            if (!transactionDetails) {
+                throw new Error('Unable to fetch transaction details.');
+            }
+            if (verbose)
+                console.log(`Fetched transaction details: ${JSON.stringify(transactionDetails)}`);
+            const blockTime = transactionDetails.blockTime;
+            if (blockTime === null || blockTime === undefined) {
+                console.warn('Block time is unavailable, trying the next transaction.');
+                before = earliestSignature;
+                earliestSignature = null; // Reset and fetch the next signature
+                continue; // Continue to the next loop iteration to fetch the next transaction
+            }
+            const timestamp = new Date(blockTime * 1000).toISOString();
+            if (verbose) {
+                console.log(`Program ID: ${programId}`);
+                console.log(`First Deployment Timestamp: ${timestamp}`);
+            }
+            else {
+                console.log(timestamp);
+            }
+            break; // Successfully found a transaction with a valid blockTime
         }
     }
     catch (error) {

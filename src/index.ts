@@ -7,9 +7,8 @@ import pLimit from 'p-limit';
 const limit = pLimit(1);
 
 // Function to delay execution
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+export const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// Function to get the first transaction timestamp of a Solana program
 export async function getFirstTransactionTimestamp(programId: string, verbose: boolean = false) {
     try {
         // Connect to the Solana network (mainnet-beta)
@@ -81,25 +80,32 @@ export async function getFirstTransactionTimestamp(programId: string, verbose: b
         if (verbose) console.log(`Earliest transaction signature: ${earliestSignature}`);
 
         // Retrieve the details of the earliest transaction with rate limiting
-        const transactionDetails = await limit(() => connection.getTransaction(earliestSignature!, { maxSupportedTransactionVersion: 0 }));
-        if (!transactionDetails) {
-            throw new Error('Unable to fetch transaction details.');
-        }
+        while (earliestSignature) {
+            const transactionDetails = await limit(() => connection.getTransaction(earliestSignature!, { maxSupportedTransactionVersion: 0 }));
+            if (!transactionDetails) {
+                throw new Error('Unable to fetch transaction details.');
+            }
 
-        if (verbose) console.log(`Fetched transaction details: ${JSON.stringify(transactionDetails)}`);
+            if (verbose) console.log(`Fetched transaction details: ${JSON.stringify(transactionDetails)}`);
 
-        const blockTime = transactionDetails.blockTime;
-        if (blockTime === null || blockTime === undefined) {
-            throw new Error('Block time is unavailable.');
-        }
+            const blockTime = transactionDetails.blockTime;
+            if (blockTime === null || blockTime === undefined) {
+                console.warn('Block time is unavailable, trying the next transaction.');
+                before = earliestSignature;
+                earliestSignature = null; // Reset and fetch the next signature
+                continue; // Continue to the next loop iteration to fetch the next transaction
+            }
 
-        const timestamp = new Date(blockTime * 1000).toISOString();
+            const timestamp = new Date(blockTime * 1000).toISOString();
 
-        if (verbose) {
-            console.log(`Program ID: ${programId}`);
-            console.log(`First Deployment Timestamp: ${timestamp}`);
-        } else {
-            console.log(timestamp);
+            if (verbose) {
+                console.log(`Program ID: ${programId}`);
+                console.log(`First Deployment Timestamp: ${timestamp}`);
+            } else {
+                console.log(timestamp);
+            }
+
+            break; // Successfully found a transaction with a valid blockTime
         }
     } catch (error) {
         console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);

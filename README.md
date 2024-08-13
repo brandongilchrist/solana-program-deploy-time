@@ -1,99 +1,97 @@
-# Solana Program Deployment Timestamp Tool
+# Solana First Deployment Timestamp Program
 
-## Overview
-
-The **Solana Program Deployment Timestamp Tool** is a command-line utility designed to fetch the timestamp of the first deployment transaction of a Solana program. It uses the Solana RPC API to gather on-chain data, helping developers and users identify the exact deployment time of any Solana program.
+This program fetches the timestamp of the first deployment of a Solana program using the program's public key. It is designed to retrieve this information efficiently while minimizing the impact on Solana's network and adhering to rate limits. The program also incorporates a caching mechanism to avoid redundant network requests and improve performance.
 
 ## Features
 
-- **Fetch Deployment Timestamp**: Retrieves the timestamp of the first deployment transaction for a given Solana program.
-- **Rate Limiting**: Implements rate limiting to prevent exceeding the request limits imposed by Solana RPC endpoints.
-- **Verbose Logging**: Optionally provides detailed output, including connection information, fetched signatures, and transaction details.
+- **Efficient Network Usage:** Adheres to Solana’s rate limits by controlling the concurrency of requests and introducing artificial delays between batches of requests.
+- **File-Based Caching:** Stores previously fetched results to avoid redundant network requests and improve performance on subsequent runs.
+- **Verbose Output:** Supports multiple levels of verbosity to provide detailed information about the process, including transaction details and progress updates.
+- **Human-Readable Output:** Converts timestamps into a human-friendly format for easier interpretation.
+- **Error Handling:** Includes robust error handling, particularly for rate-limiting issues, with an exponential backoff strategy.
+- **Solscan Integration:** Provides a link to view the earliest transaction on Solscan.
 
 ## Installation
 
-To install and run the tool, ensure that [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/) are installed on your system.
+To install the dependencies, run:
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/brandongilchrist/solana-program-deploy-time.git
-   cd solana-program-deploy-time
-   ```
-
-2. **Install Dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Build the Project:**
-   Compile the TypeScript code into JavaScript:
-   ```bash
-   npm run build
-   ```
+```bash
+npm install
+```
 
 ## Usage
 
-Run the tool using the following command:
+The program is run via the command line and can be invoked with the following options:
 
 ```bash
-node dist/index.js get-timestamp <programId> [--verbose]
+node src/index.js get-timestamp <programId> [options]
 ```
 
-- `<programId>`: The public key of the Solana program for which you want to find the first deployment timestamp.
-- `--verbose`: (Optional) Enables verbose logging for detailed output.
+### Options
 
-### Example
+- `<programId>`: The public key of the Solana program.
+- `-v, --verbose <level>`: Set the verbosity level (1, 2, or 3).
+  - **Level 1**: Basic information (default).
+  - **Level 2**: Detailed progress updates.
+  - **Level 3**: Full transaction details.
+- `-r, --readable`: Display the timestamp in a human-readable format (e.g., "Sun, 11 Aug 2024 18:18:27 GMT").
+- `-f, --force-refresh`: Fetch the information from the blockchain even if the cache exists and update the cache if the value is different.
+- `-h, --help`: Display help information.
+
+### Example Usage
+
+To fetch the first deployment timestamp for a program with ID `H1AAnXxy712ZKgnhZk8YmRr5GA6VaL2L4R8dnJc4jhGF` with a verbose level of 3 and a human-readable timestamp:
 
 ```bash
-node dist/index.js get-timestamp TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA --verbose
+node src/index.js get-timestamp H1AAnXxy712ZKgnhZk8YmRr5GA6VaL2L4R8dnJc4jhGF -v 3 -r
 ```
 
-This command fetches the first deployment timestamp for the specified Solana program and outputs the result. The `--verbose` flag provides additional information about the process.
-
-## Development
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/)
-- [npm](https://www.npmjs.com/)
-
-### Setup
-
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/brandongilchrist/solana-program-deploy-time.git
-   cd solana-program-deploy-time
-   ```
-
-2. **Install Dependencies:**
-   ```bash
-   npm install
-   ```
-
-### Building for Production
-
-To build the project for production, use:
+To force a refresh from the blockchain, bypassing the cache:
 
 ```bash
-npm run build
+node src/index.js get-timestamp H1AAnXxy712ZKgnhZk8YmRr5GA6VaL2L4R8dnJc4jhGF -v 3 -r -f
 ```
 
-This command compiles the TypeScript code into JavaScript, placing the output in the `dist` directory.
+### Sample Output
 
-## Contributing
+```bash
+❯ node src/index.js get-timestamp H1AAnXxy712ZKgnhZk8YmRr5GA6VaL2L4R8dnJc4jhGF -v 3 -r -f
 
-Contributions are welcome! Please fork the repository and submit a pull request with your changes.
+Connected to Solana mainnet-beta at https://api.mainnet-beta.solana.com
+Request interval: 6000ms
+Converted Program ID: H1AAnXxy712ZKgnhZk8YmRr5GA6VaL2L4R8dnJc4jhGF to PublicKey
 
-### Commit Messages
+Fetching transaction signatures...
+  - Batch 1: 1000 signatures, total fetched: 1000
+  - Batch 2: 1000 signatures, total fetched: 2000
+  - Batch 3: 1000 signatures, total fetched: 3000
+  - Batch 4: 1000 signatures, total fetched: 4000
+  - Batch 5: 1000 signatures, total fetched: 5000
+  - Batch 6: 224 signatures, total fetched: 5224
 
-Use clear and descriptive commit messages. Examples include:
-- "Initial implementation: Fetch first deployment timestamp of a Solana program."
-- "Add rate limiting and verbose logging for request tracking."
+Earliest transaction signature found: 3xnQ2HzuwT9sTdpxUv5rEsp6rA12kYFABZNsjFPiH4PXATtEeFoGB3nVHbMbWLNhevcf35oGFvqbHykD3vfQYmW
 
-## License
+Updated cache for program ID: H1AAnXxy712ZKgnhZk8YmRr5GA6VaL2L4R8dnJc4jhGF
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Program ID: H1AAnXxy712ZKgnhZk8YmRr5GA6VaL2L4R8dnJc4jhGF
+First Deployment Timestamp: Sun, 11 Aug 2024 18:18:27 GMT
+Solscan link: https://solscan.io/tx/3xnQ2HzuwT9sTdpxUv5rEsp6rA12kYFABZNsjFPiH4PXATtEeFoGB3nVHbMbWLNhevcf35oGFvqbHykD3vfQYmW
+```
 
-## Contact
+## Design Decisions
 
-For questions or issues, please open an issue on the GitHub repository or contact brandongilchrist via GitHub.
+### Concurrency Control with `pLimit`
+- **Why**: Solana's RPC nodes impose rate limits to protect the network. By limiting concurrency to a single request at a time, we avoid hitting these limits and ensure the program remains operational.
+- **Impact**: This results in slower execution but significantly increases reliability.
+
+### File-Based Caching
+- **Why**: Caching allows the program to store previously fetched results, reducing the need for repeated network requests. Given that the first deployment timestamp of a program is immutable, caching is particularly effective.
+- **Impact**: The cache reduces network load and improves the program’s responsiveness on subsequent runs.
+
+### Exponential Backoff for Error Handling
+- **Why**: When encountering a rate limit error, retrying immediately would likely lead to repeated failures. By using exponential backoff, the program progressively increases the delay between retries, giving the network time to recover.
+- **Impact**: This enhances the program's resilience under high network load.
+
+### Modular Design with CLI
+- **Why**: Structuring the program as a CLI tool with options for verbosity, human-readable output, and cache management creates a flexible tool that can be used in various scenarios.
+- **Impact**: The program is versatile and easy to integrate into different workflows or automated processes.
